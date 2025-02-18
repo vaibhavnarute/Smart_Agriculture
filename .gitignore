@@ -1,0 +1,13 @@
+# Virtual environments
+.venv/
+
+# IDE-specific files
+.idea/
+.vscode/
+
+# JSON config files
+*.json
+
+# Byte-compiled files
+__pycache__/
+*.py[cod]
