@@ -36,18 +36,15 @@ The **Agriculture Management System** is an AI-powered platform that helps farme
 - Pillow (PIL) – Image handling
 - Streamlit Extras – UI enhancements (colored_header, metric_cards)
 
-## 📂 Project Structure
-Agriculture-Management-ML/
-│── app.py                    # Main Streamlit application
-│── crop_recommendation.py     # Crop Recommendation Model
-│── irrigation_model.py        # Irrigation Prediction Model
-│── crop_recommendation_model.pkl # Trained Crop Model (Extract the zip)
-│── irrigation_model.h5         # Trained Irrigation Model
-│── soil_data.csv              # Soil Dataset
-│── weather_data.csv           # Weather Dataset
-│── project_overview.md        # Documentation for the project
-│── uploaded_images            # Images (Extract the zip)
-│── .gitignore                 # Ignore unnecessary files
-│── README.md                  # Main project description
-│── requirements.txt           # Dependencies for ML model
-│── LICENSE                    # Open-source license
+## 📸 Screenshots
+![Screenshot 2025-02-19 120657](https://github.com/user-attachments/assets/b8504e67-2c23-4673-b6d6-94d974960017)
+#
+![Screenshot 2025-02-19 120718](https://github.com/user-attachments/assets/cc112a3b-8cde-43fb-825d-e7c22d8c5e6d)
+#
+![Screenshot 2025-02-19 120743](https://github.com/user-attachments/assets/b60106d7-5890-4fb0-9934-acf47080d621)
+#
+
+## ⚙️ Installation Guide
+### 1️⃣ Clone the repository  
+git clone https://github.com/yourusername/Agriculture-Management-ML.git
+cd Agriculture-Management-ML 
