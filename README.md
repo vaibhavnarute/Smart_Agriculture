@@ -37,6 +37,9 @@ The **Agriculture Management System** is an AI-powered platform that helps farme
 - Streamlit Extras – UI enhancements (colored_header, metric_cards)
 
 ## 📸 Screenshots
+
+![image](https://github.com/user-attachments/assets/a7eb689e-1988-4b38-b2c0-4cddedf974c4)
+#
 ![Screenshot 2025-02-19 120657](https://github.com/user-attachments/assets/b8504e67-2c23-4673-b6d6-94d974960017)
 #
 ![Screenshot 2025-02-19 120718](https://github.com/user-attachments/assets/cc112a3b-8cde-43fb-825d-e7c22d8c5e6d)
