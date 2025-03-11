@@ -3,3 +3,6 @@ pandas
 requests
 scikit-learn
 joblib
+google-generativeai
+Pillow
+python-dotenv
