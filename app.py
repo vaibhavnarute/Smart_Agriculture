@@ -20,6 +20,11 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 import joblib
 from tensorflow.keras.callbacks import EarlyStopping
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+api_key = os.getenv("API_KEY")
 
 # -------------------- Page Configuration --------------------
 st.set_page_config(
@@ -52,7 +57,7 @@ lottie_agri = load_lottieurl("https://assets1.lottiefiles.com/packages/lf20_ygiu
 
 # Function to get weather data from API
 def get_weather_data(city):
-    api_key = "f853c70d8e3e9c8c1bf23747806c73a6"
+    api_key = "API_KEY"
     base_url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
     response = requests.get(base_url)
     data = response.json()
