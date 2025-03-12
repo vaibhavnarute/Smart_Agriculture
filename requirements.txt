@@ -6,3 +6,7 @@ joblib
 google-generativeai
 Pillow
 python-dotenv
+streamlit_extras
+opencv-python  
+streamlit_lottie 
+tensorflow
