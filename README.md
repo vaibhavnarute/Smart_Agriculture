@@ -1,109 +1,81 @@
-# 🌾 Agriculture Management System (ML-Powered)
+# AgroBloom AI - Smart Agriculture Management System
 
-## 🔍 Overview
-The **Agriculture Management System** is an AI-powered platform that helps farmers make data-driven decisions by providing:
-- 🌱 **Crop Recommendation** based on soil health, weather conditions, and historical data.
-- 💧 **Irrigation Management** using real-time moisture levels and weather predictions.
-- 🌦️ **Weather Forecasting** for optimizing farming schedules.
-- 🌾 **Crop Health Analyses** for predicting the crop health based on crop image.
+An intelligent farming companion that uses AI to help optimize agricultural operations, increase crop yield, and make data-driven decisions for sustainable farming.
 
-## 🚀 Features
-- ✅ **Machine Learning-Based Crop Recommendations**
-- ✅ **Weather and Soil Moisture Analysis**
-- ✅ **Farmer-Friendly Interactive Dashboard**
-- ✅ **Irrigation Management System**
-- ✅ **Multilingual Support for Farmers**
+## Features
 
-## 🛠️ Tech Stack
-**🌐 Frontend:**
-- Streamlit – Web-based UI for ML model interaction
-  
-**🖥️ Backend:**
-- Python (Streamlit) – Serving ML models and handling UI
-  
-**🤖 Machine Learning:**
-- Scikit-Learn – Random Forest models for classification & regression
-- TensorFlow/Keras – Deep learning (CNN) for image processing
+- 🌤️ **Smart Weather Insights**: Real-time weather predictions and adaptive planning
+- 💧 **AI Irrigation System**: Optimized water usage with predictive analytics
+- 📊 **Soil Health Dashboard**: Comprehensive nutrient analysis and recommendations
+- 🌿 **Disease Detection**: AI-powered plant disease detection and treatment recommendations
+- 🌾 **Crop Recommendation**: Smart crop suggestions based on soil conditions
 
-**📡 APIs & Integrations:**
-- OpenWeather API – Fetches real-time weather data
-- Requests & JSON – Handles API calls
+## Setup Instructions
 
-**🔧 Tools & Libraries:**
-- OpenCV (cv2) – Image processing for crop health analysis
-- Pandas & NumPy – Data manipulation
-- Joblib – Model saving/loading
-- Pillow (PIL) – Image handling
-- Streamlit Extras – UI enhancements (colored_header, metric_cards)
-
-## 📸 Screenshots
-
-![image](https://github.com/user-attachments/assets/a7eb689e-1988-4b38-b2c0-4cddedf974c4)
-#
-![Screenshot 2025-02-19 120657](https://github.com/user-attachments/assets/b8504e67-2c23-4673-b6d6-94d974960017)
-#
-![Screenshot 2025-02-19 120718](https://github.com/user-attachments/assets/cc112a3b-8cde-43fb-825d-e7c22d8c5e6d)
-#
-![Screenshot 2025-02-19 120743](https://github.com/user-attachments/assets/b60106d7-5890-4fb0-9934-acf47080d621)
-
-
-## ⚙️ Installation Guide
-### 1️⃣ Clone the repository  
-```sh
-git clone https://github.com/yourusername/Agriculture-Management-ML.git
-cd Agriculture-Management-ML
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd Agriculture-Management-System
 ```
 
-### 2️⃣ Install Backend Dependencies
-```sh
+2. Install dependencies:
+```bash
 pip install -r requirements.txt
 ```
 
-### 3️⃣ Install Frontend Dependencies
-```sh
-npm install
+3. Set up environment variables:
+   - Create a `.env` file in the root directory
+   - Add your API keys:
+     ```
+     API_KEY=your_openweather_api_key_here
+     GOOGLE_API_KEY=your_google_gemini_api_key_here
+     ```
+   - Get your OpenWeather API key from: https://openweathermap.org/api
+   - Get your Google Gemini API key from: https://makersuite.google.com/app/apikey
+
+4. Run the application:
+```bash
+streamlit run app.py
 ```
 
-### 4️⃣ Run the Project
-- Backend
-```sh
-python app.py
-```
-- Frontend
-```sh
-npm start
-```
+## Usage
 
-## 🔥 Machine Learning Model Training
-To train the machine learning models used in this project, run the following command:
-```sh
-python scripts/train_model.py
-```
-**Dataset Details:**
-- Soil Data: Measurements including soil pH, nitrogen, phosphorus, potassium levels, and organic matter percentage.
-- Weather Data: Historical records with temperature, humidity, and precipitation.
-- Crop Production Data: Data on crop yields and types across different regions.
+1. **Weather Forecasting**:
+   - Enter your location
+   - Get real-time weather insights and farming recommendations
 
-**Model Training Process**
-- Data Preprocessing:
-  Load and clean the soil, weather, and crop production datasets.
-  Merge datasets to create a comprehensive training set.
-- Model Selection:
-  Crop Recommendation: Utilizes a RandomForestClassifier to suggest optimal crops based on soil parameters.
-  Irrigation Management: Uses a RandomForestRegressor to predict soil moisture levels.
-  Crop Health Monitoring: Trains a CNN model on image data to classify crop health.
-- Training & Evaluation:
-  Split data into training and testing sets.
-  Train the models and evaluate their performance (e.g., model accuracy for classification tasks).
-  Save the trained models (e.g., crop_recommendation_model.pkl, irrigation_model.h5, and crop_health_model.h5).
-  
-## 📜 License
-This project is licensed under the MIT License.
+2. **Irrigation Management**:
+   - Input field parameters
+   - Receive AI-powered irrigation recommendations
 
-## 📧 Contact
-For any queries, contact me at swarupkakade1810@gmail.com or connect on LinkedIn: https://www.linkedin.com/in/swarup1109/
+3. **Soil Health Analysis**:
+   - Enter soil test results
+   - Get comprehensive soil health analysis and recommendations
 
-## We hope AgroBloom-AI helps revolutionize your farming practices. Happy farming!
-```css
-This README provides a comprehensive overview of Agriculture Management System by features and tech stack to detailed installation, usage, and training instructions.
-```
+4. **Disease Detection**:
+   - Upload plant images
+   - Receive disease diagnosis and treatment recommendations
+
+5. **Crop Recommendation**:
+   - Input soil parameters
+   - Get AI-powered crop suggestions
+
+## Requirements
+
+- Python 3.8+
+- Internet connection for API access
+- Valid API keys for OpenWeather and Google Gemini
+
+## Data Files
+
+Make sure you have the following data files in your directory:
+- soil_analysis_data.csv
+- crop_production_data.csv
+
+## Contributing
+
+Feel free to submit issues, fork the repository, and create pull requests for any improvements.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

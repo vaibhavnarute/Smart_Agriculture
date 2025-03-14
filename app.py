@@ -1,3 +1,14 @@
+import streamlit as st
+
+# Must be the first Streamlit command
+st.set_page_config(
+    page_title="AgroBloom-AI",
+    page_icon="🌱",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Now import other libraries
 import os
 import numpy as np
 import pandas as pd
@@ -6,33 +17,22 @@ import json
 import cv2
 from PIL import Image
 from io import BytesIO
-import streamlit as st
 from streamlit_extras.colored_header import colored_header
 from streamlit_extras.metric_cards import style_metric_cards
 from streamlit_lottie import st_lottie
-import tensorflow as tf
-from tensorflow.keras.models import Sequential, load_model
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
-from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.optimizers import Adam
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 import joblib
-from tensorflow.keras.callbacks import EarlyStopping
 from dotenv import load_dotenv
-import os
+import google.generativeai as genai
+from disease import analyze_plant_disease
+from PIL import UnidentifiedImageError
 
+# Load environment variables
 load_dotenv()
 api_key = os.getenv("API_KEY")
-
-# -------------------- Page Configuration --------------------
-st.set_page_config(
-    page_title="AgroBloom-AI",
-    page_icon="🌱",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # -------------------- Custom CSS --------------------
 def local_css(file_name):
@@ -57,7 +57,7 @@ lottie_agri = load_lottieurl("https://assets1.lottiefiles.com/packages/lf20_ygiu
 
 # Function to get weather data from API
 def get_weather_data(city):
-    api_key = "API_KEY"
+    api_key = os.getenv("API_KEY")
     base_url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
     response = requests.get(base_url)
     data = response.json()
@@ -188,69 +188,6 @@ def irrigation_management(weather_data, soil_moisture):
     else:
         st.error("Unable to perform irrigation management without a trained model.")
 
-# Function to create a simple CNN model
-# Create CNN Model
-def create_cnn_model():
-    model = Sequential([
-        Conv2D(32, (3, 3), activation='relu', input_shape=(64, 64, 3)),
-        MaxPooling2D(pool_size=(2, 2)),
-        Conv2D(64, (3, 3), activation='relu'),
-        MaxPooling2D(pool_size=(2, 2)),
-        Flatten(),
-        Dense(128, activation='relu'),
-        Dropout(0.5),  # Add dropout to prevent overfitting
-        Dense(1, activation='sigmoid')  # Binary classification (Healthy = 0, Unhealthy = 1)
-    ])
-    
-    model.compile(optimizer=Adam(learning_rate=0.001), 
-                  loss='binary_crossentropy', 
-                  metrics=['accuracy'])
-    
-    return model
-
-# Train Model on Placeholder Data
-def train_placeholder_model():
-    model = create_cnn_model()
-    
-    X_train = np.random.rand(100, 64, 64, 3)  # 100 samples of 64x64 images
-    y_train = np.random.randint(2, size=100)   # Binary labels (0=Healthy, 1=Unhealthy)
-    
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
-
-    # Class weights to handle potential class imbalance
-    class_weights = {0: 1, 1: 10}  # Adjust weights based on class imbalance
-
-    early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-    
-    model.fit(X_train, y_train, epochs=10, validation_data=(X_val, y_val), class_weight=class_weights, callbacks=[early_stopping])
-    model.save('crop_health_model.h5')
-    
-    st.write("Crop health model trained and saved.")
-    return model
-
-# Preprocess Image Before Prediction
-def preprocess_image(image_path):
-    image = cv2.imread(image_path)
-    if image is None:
-        st.error("Error loading image. Please check the file path.")
-        return None
-    
-    image = cv2.resize(image, (64, 64))  # Resize to model input size
-    image = image / 255.0  # Normalize pixel values
-    image = np.expand_dims(image, axis=0)  # Add batch dimension
-    
-    return image
-
-# Predict Crop Health
-def predict_crop_health(model, image_path):
-    image = preprocess_image(image_path)
-    if image is not None:
-        prediction = model.predict(image)[0][0]  # Get scalar output
-        print(f"Prediction probability: {prediction}")  # Check output probability
-        
-        return "Healthy" if prediction < 0.5 else "Unhealthy"
-    return None
-
 # -------------------- Main App --------------------
 
 def main():
@@ -260,8 +197,8 @@ def main():
         "Weather Forecasting", 
         "Irrigation Management", 
         "Soil Health Analysis", 
-        "Crop Recommendation", 
-        "Crop Health Monitoring"
+        "Crop Recommendation",
+        "Disease Detection"
     ]
     choice = st.sidebar.radio("Navigation", menu)
 
@@ -287,8 +224,8 @@ def main():
             features = [
                 {"icon": "🌤️", "title": "Smart Weather Insights", "desc": "Real-time weather predictions and adaptive planning"},
                 {"icon": "💧", "title": "AI Irrigation System", "desc": "Optimized water usage with predictive analytics"},
-                {"icon": "🌱", "title": "Crop Health Guardian", "desc": "Visual analysis of plant health using computer vision"},
-                {"icon": "📊", "title": "Soil Health Dashboard", "desc": "Comprehensive nutrient analysis and recommendations"}
+                {"icon": "📊", "title": "Soil Health Dashboard", "desc": "Comprehensive nutrient analysis and recommendations"},
+                {"icon": "🌿", "title": "Disease Detection", "desc": "AI-powered plant disease detection and treatment recommendations"}
             ]
             
             for feat in features:
@@ -540,56 +477,55 @@ def main():
         else:
             st.error("Data files not loaded. Please ensure CSV files are available.")
 
-    # -------------------- Crop Health Monitoring --------------------
-    elif choice == "Crop Health Monitoring":
+    # -------------------- Disease Detection --------------------
+    elif choice == "Disease Detection":
         colored_header(
-            label="🌿 Crop Health Guardian",
-            description="AI-powered plant disease detection and health monitoring",
+            label="🌿 Disease Detection",
+            description="AI-powered plant disease detection and treatment recommendations",
             color_name="red-70"
         )
         
+        with st.expander("🔍 How to use this tool"):
+            st.markdown(
+                """
+                1. Upload a plant image.<br>
+                2. Click 'Analyze Disease'.<br>
+                3. Receive disease detection and treatment recommendations.
+                """, unsafe_allow_html=True
+            )
+        
         col1, col2 = st.columns([1, 2])
         with col1:
-            st.subheader("Image Analysis")
-            uploaded_file = st.file_uploader("Upload Crop Image", type=["jpg", "jpeg", "png"])
-            
+            uploaded_file = st.file_uploader("Upload a plant image", type=["jpg", "png"])
             if uploaded_file:
-                os.makedirs("uploaded_images", exist_ok=True)
-                file_path = os.path.join("uploaded_images", uploaded_file.name)
-                with open(file_path, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-                st.image(file_path, caption="Uploaded Image", use_column_width=True)
-                
-                if st.button("Analyze Crop Health", use_container_width=True):
-                    with st.spinner("Scanning for plant diseases..."):
-                        # Load the trained crop health model if it exists.
-                        if os.path.exists("crop_health_model.h5"):
-                            model = load_model("crop_health_model.h5")
-                        else:
-                            st.info("No crop health model found. Training a placeholder model...")
-                            model = train_placeholder_model()
-                        health_status = predict_crop_health(model, file_path)
-                        with col2:
-                            if health_status == "Healthy":
+                try:
+                    # Ensure the file is an image
+                    image = Image.open(BytesIO(uploaded_file.read()))
+                    st.image(image, caption="Uploaded Image", use_column_width=True)
+                    
+                    if st.button("Analyze Disease", use_container_width=True):
+                        with st.spinner("Analyzing disease..."):
+                            disease_info = analyze_plant_disease(image)
+                            
+                            with col2:
+                                st.subheader("Disease Detection Results")
+                                st.write(disease_info)
                                 st.markdown(
                                     """
-                                    <div class="health-result healthy">
-                                        <h1>🌱 Healthy Crop!</h1>
-                                        <p>No significant diseases detected.</p>
+                                    <div class="recommendation-box">
+                                        <h3>📋 Recommended Actions</h3>
+                                        <ul>
+                                            <li>Consult a local agricultural expert for further diagnosis.</li>
+                                            <li>Apply recommended treatment methods.</li>
+                                            <li>Monitor plant health regularly.</li>
+                                        </ul>
                                     </div>
                                     """, unsafe_allow_html=True
                                 )
-                            elif health_status == "Unhealthy":
-                                st.markdown(
-                                    """
-                                    <div class="health-result unhealthy">
-                                        <h1>⚠️ Disease Detected!</h1>
-                                        <p>Recommended treatment: Fungicide application and further expert diagnosis.</p>
-                                    </div>
-                                    """, unsafe_allow_html=True
-                                )
-                            else:
-                                st.error("Unable to determine crop health.")
+                except UnidentifiedImageError:
+                    st.error("The uploaded file is not a valid image. Please upload a valid image file.")
+                except Exception as e:
+                    st.error(f"An error occurred: {str(e)}")
 
 if __name__ == "__main__":
     main()
