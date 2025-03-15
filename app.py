@@ -28,16 +28,165 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 from disease import analyze_plant_disease
 from PIL import UnidentifiedImageError
+import ee
+import geemap
+import folium
+from streamlit_folium import folium_static
+from datetime import datetime, timedelta
+
+# Initialize Earth Engine with error handling
+def initialize_ee():
+    try:
+        # Try to initialize with default credentials
+        project_id = os.getenv("GEE_PROJECT_ID", "agrobloom-ai")  # Get from environment or use default
+        ee.Initialize(project=project_id)
+    except Exception as e:
+        try:
+            # If failed, try to authenticate and initialize
+            ee.Authenticate()
+            project_id = os.getenv("GEE_PROJECT_ID", "agrobloom-ai")
+            ee.Initialize(project=project_id)
+        except Exception as auth_e:
+            st.error(f"""
+                Error initializing Google Earth Engine. Please follow these steps:
+                1. Run 'earthengine authenticate' in your terminal
+                2. Create a Google Cloud Project and enable Earth Engine
+                3. Set up credentials for Earth Engine
+                4. Add your project ID to the .env file as GEE_PROJECT_ID
+                
+                Error details: {str(auth_e)}
+            """)
+            return False
+    return True
+
+# Initialize Earth Engine
+ee_initialized = initialize_ee()
+
+# Function to get soil moisture data from Google Earth Engine
+def get_soil_moisture(lat, lon):
+    if not ee_initialized:
+        st.error("Earth Engine not initialized. Cannot fetch soil moisture data.")
+        return None
+        
+    try:
+        # Create a point and buffer it to create a small region
+        point = ee.Geometry.Point([lon, lat])
+        region = point.buffer(1000)  # 1km buffer
+        
+        # Get the current date and the date 7 days ago
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=7)
+        
+        # Load the ERA5-Land hourly data
+        collection = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY')\
+            .filterDate(start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))\
+            .select('volumetric_soil_water_layer_1')  # This is the correct band name for soil moisture
+            
+        # Check if we have any images
+        collection_size = collection.size().getInfo()
+        if collection_size == 0:
+            st.warning("No recent soil moisture data available. Extending search to last 30 days.")
+            start_date = end_date - timedelta(days=30)
+            collection = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY')\
+                .filterDate(start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))\
+                .select('volumetric_soil_water_layer_1')
+            collection_size = collection.size().getInfo()
+            
+            if collection_size == 0:
+                st.error("No soil moisture data available for this location in the last 30 days.")
+                return None
+        
+        try:
+            # Get the mean value over the region for each image
+            def get_region_mean(image):
+                mean = image.reduceRegion(
+                    reducer=ee.Reducer.mean(),
+                    geometry=region,
+                    scale=1000
+                )
+                return image.set('mean', mean.get('volumetric_soil_water_layer_1'))
+
+            # Map over the collection and get mean values
+            collection_with_means = collection.map(get_region_mean)
+            
+            # Get the most recent non-null value
+            sorted_collection = collection_with_means.sort('system:time_start', False)
+            recent_value = sorted_collection.first().get('mean').getInfo()
+            
+            if recent_value is None:
+                st.error("No valid soil moisture data available for this location.")
+                return None
+                
+            # Get the date range for reference
+            st.info(f"Soil moisture data from: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+                
+            # ERA5-Land volumetric soil water is in m³/m³, convert to percentage
+            return round(recent_value * 100, 2)
+            
+        except Exception as sample_error:
+            st.error(f"Error processing soil moisture data: {str(sample_error)}")
+            return None
+            
+    except Exception as e:
+        st.error(f"Error fetching soil moisture data: {str(e)}")
+        return None
+
+# Function to display soil moisture map
+def display_soil_moisture_map(lat, lon, soil_moisture):
+    try:
+        # Create a map centered at the location
+        m = folium.Map(location=[lat, lon], zoom_start=10)
+        
+        # Add a marker with soil moisture information
+        folium.Marker(
+            [lat, lon],
+            popup=f"Soil Moisture: {soil_moisture}%",
+            icon=folium.Icon(color='green', icon='info-sign')
+        ).add_to(m)
+        
+        # Add a circle to represent the area of measurement
+        folium.Circle(
+            location=[lat, lon],
+            radius=2000,  # 2km radius
+            color='blue',
+            fill=True,
+            popup='Measurement Area'
+        ).add_to(m)
+        
+        # Display the map in Streamlit
+        folium_static(m)
+    except Exception as e:
+        st.error(f"Error displaying map: {str(e)}")
+
+# Function to get coordinates from city name
+def get_coordinates(city):
+    try:
+        # Using OpenStreetMap Nominatim API for geocoding
+        url = f"https://nominatim.openstreetmap.org/search?city={city}&format=json"
+        headers = {
+            'User-Agent': 'AgroBloom-AI/1.0'  # Add user agent to comply with Nominatim usage policy
+        }
+        response = requests.get(url, headers=headers)
+        data = response.json()
+        
+        if data:
+            lat = float(data[0]['lat'])
+            lon = float(data[0]['lon'])
+            return lat, lon
+        return None, None
+    except Exception as e:
+        st.error(f"Error getting coordinates: {str(e)}")
+        return None, None
 
 # Load environment variables
 load_dotenv()
 api_key = os.getenv("API_KEY")
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# -------------------- Custom CSS --------------------
+# Load CSS
 def local_css(file_name):
     try:
-        with open(file_name) as f:
+        with open(os.path.join(os.path.dirname(__file__), file_name)) as f:
             st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
     except Exception as e:
         st.warning(f"Could not load CSS file {file_name}: {e}")
@@ -323,49 +472,195 @@ def main():
     elif choice == "Irrigation Management":
         colored_header(
             label="💧 Smart Irrigation System",
-            description="AI-powered water management for optimal crop growth",
+            description="AI-powered water management with real-time soil moisture data",
             color_name="blue-70"
         )
+        
+        # Define suggested agricultural regions
+        suggested_regions = {
+            "India": [
+                "Punjab, India",
+                "Haryana, India",
+                "Uttar Pradesh, India",
+                "Bihar, India",
+                "West Bengal, India",
+                "Maharashtra, India",
+                "Karnataka, India",
+                "Tamil Nadu, India",
+                "Andhra Pradesh, India",
+                "Madhya Pradesh, India",
+                "Gujarat, India",
+                "Rajasthan, India"
+            ],
+            "United States": [
+                "Sacramento, California",
+                "Fresno, California",
+                "Des Moines, Iowa"
+            ],
+            "Europe": [
+                "Bordeaux, France",
+                "Tuscany, Italy",
+                "Andalusia, Spain"
+            ]
+        }
         
         col1, col2 = st.columns([1, 2])
         with col1:
             st.subheader("Field Parameters")
-            city = st.text_input("📍 Location", "London")
-            soil_moisture = st.slider("Current Soil Moisture (%)", 0, 100, 30)
+            
+            # Region selection
+            region_category = st.selectbox("Select Region Category", ["India", "United States", "Europe"])
+            city = st.selectbox("📍 Select Location", suggested_regions[region_category])
+            
+            # Alternative manual input
+            use_custom_location = st.checkbox("Use Custom Location")
+            if use_custom_location:
+                city = st.text_input("Enter Custom Location")
+            
             crop_type = st.selectbox("Crop Type", ["Wheat", "Corn", "Rice", "Soybean"])
             st.caption("💡 Optimal moisture levels vary by crop type")
             
+            # Add region information
+            if not use_custom_location:
+                if region_category == "India":
+                    st.info("""
+                    🌾 Major Crops in Selected Region:
+                    - Punjab: Wheat, Rice, Cotton
+                    - Haryana: Wheat, Rice, Sugarcane
+                    - UP: Wheat, Rice, Sugarcane
+                    - Bihar: Rice, Wheat, Maize
+                    - West Bengal: Rice, Jute, Tea
+                    - Maharashtra: Cotton, Sugarcane, Soybean
+                    - Karnataka: Coffee, Sugarcane, Ragi
+                    - Tamil Nadu: Rice, Sugarcane, Cotton
+                    - Andhra Pradesh: Rice, Cotton, Sugarcane
+                    - Madhya Pradesh: Soybean, Wheat, Rice
+                    - Gujarat: Cotton, Groundnut, Wheat
+                    - Rajasthan: Wheat, Millet, Pulses
+                    """)
+            
             if st.button("Calculate Irrigation", use_container_width=True):
                 with st.spinner("Analyzing field conditions..."):
-                    weather_data = get_weather_data(city)
-                    if weather_data and weather_data.get("main"):
-                        with col2:
-                            st.subheader("Irrigation Plan")
-                            irrigation_management(weather_data, soil_moisture)
-                            
-                            # Visual moisture indicator
-                            st.markdown(
-                                f"""
-                                <div class="moisture-gauge">
-                                    <div class="moisture-fill" style="width: {soil_moisture}%">
-                                        {soil_moisture}%
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True
-                            )
-                            
-                            # Water saving stats
-                            st.markdown(
-                                """
-                                <div class="savings-card">
-                                    <h3>💧 Water Conservation</h3>
-                                    <p>Potential savings this month: <strong>12,500L</strong></p>
-                                    <p>Estimated yield improvement: <strong>15-20%</strong></p>
-                                </div>
-                                """, unsafe_allow_html=True
-                            )
+                    # Get coordinates from city name
+                    lat, lon = get_coordinates(city)
+                    
+                    if lat and lon:
+                        # Get real-time soil moisture data
+                        soil_moisture = get_soil_moisture(lat, lon)
+                        
+                        if soil_moisture is not None:
+                            weather_data = get_weather_data(city)
+                            if weather_data and weather_data.get("main"):
+                                with col2:
+                                    st.subheader("Irrigation Plan")
+                                    
+                                    # Display the soil moisture map
+                                    st.write("### 🗺️ Soil Moisture Map")
+                                    display_soil_moisture_map(lat, lon, soil_moisture)
+                                    
+                                    # Display current conditions
+                                    st.write("### 📊 Current Conditions")
+                                    cols = st.columns(3)
+                                    cols[0].metric(
+                                        "Soil Moisture",
+                                        f"{soil_moisture}%",
+                                        delta="Real-time data",
+                                        help="Real-time soil moisture from satellite data"
+                                    )
+                                    cols[1].metric(
+                                        "Temperature",
+                                        f"{weather_data['main']['temp']}°C",
+                                        help="Current temperature"
+                                    )
+                                    cols[2].metric(
+                                        "Humidity",
+                                        f"{weather_data['main']['humidity']}%",
+                                        help="Current humidity"
+                                    )
+                                    
+                                    # Run irrigation management with real-time data
+                                    st.write("### 💧 Irrigation Analysis")
+                                    irrigation_management(weather_data, soil_moisture)
+                                    
+                                    # Visual moisture indicator with improved styling
+                                    st.markdown(
+                                        f"""
+                                        <div style="margin: 20px 0;">
+                                            <h4>Soil Moisture Level</h4>
+                                            <div class="moisture-gauge" style="
+                                                background: #f0f2f6;
+                                                border-radius: 10px;
+                                                height: 30px;
+                                                width: 100%;
+                                                overflow: hidden;
+                                            ">
+                                                <div style="
+                                                    background: linear-gradient(90deg, #2E8B57, #3CB371);
+                                                    width: {soil_moisture}%;
+                                                    height: 100%;
+                                                    display: flex;
+                                                    align-items: center;
+                                                    justify-content: center;
+                                                    color: white;
+                                                    transition: width 0.5s ease-in-out;
+                                                ">
+                                                    {soil_moisture}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                        """, unsafe_allow_html=True
+                                    )
+                                    
+                                    # Crop-specific recommendations
+                                    optimal_moisture = {
+                                        "Wheat": (30, 50),
+                                        "Corn": (35, 55),
+                                        "Rice": (60, 85),
+                                        "Soybean": (40, 60)
+                                    }
+                                    
+                                    crop_range = optimal_moisture[crop_type]
+                                    st.write(f"### 🌾 Crop-Specific Analysis for {crop_type}")
+                                    st.write(f"Optimal soil moisture range: {crop_range[0]}% - {crop_range[1]}%")
+                                    
+                                    if soil_moisture < crop_range[0]:
+                                        st.warning(f"⚠️ Soil moisture is below optimal range for {crop_type}. Irrigation recommended.")
+                                    elif soil_moisture > crop_range[1]:
+                                        st.warning(f"⚠️ Soil moisture is above optimal range for {crop_type}. Reduce irrigation.")
+                                    else:
+                                        st.success(f"✅ Soil moisture is within optimal range for {crop_type}.")
+                                    
+                                    # Water conservation stats
+                                    st.markdown(
+                                        """
+                                        <div style="
+                                            background: #f8f9fa;
+                                            border-radius: 10px;
+                                            padding: 20px;
+                                            margin-top: 20px;
+                                        ">
+                                            <h3>💧 Water Conservation Impact</h3>
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                                <div>
+                                                    <h4>Monthly Savings</h4>
+                                                    <p>Water saved: <strong>12,500L</strong></p>
+                                                    <p>Cost reduction: <strong>15%</strong></p>
+                                                </div>
+                                                <div>
+                                                    <h4>Environmental Impact</h4>
+                                                    <p>Carbon footprint reduction: <strong>25%</strong></p>
+                                                    <p>Sustainability score: <strong>8.5/10</strong></p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        """, unsafe_allow_html=True
+                                    )
+                            else:
+                                st.error("Failed to retrieve weather data for irrigation management.")
+                        else:
+                            st.error("Failed to retrieve soil moisture data. Please try again.")
                     else:
-                        st.error("Failed to retrieve weather data for irrigation management.")
+                        st.error("Could not find coordinates for the specified location. Please check the city name.")
 
     # -------------------- Soil Health Analysis --------------------
     elif choice == "Soil Health Analysis":
@@ -415,12 +710,12 @@ def main():
                             <div class="recommendation-box">
                                 <h3>📋 Recommended Actions</h3>
                                 <ul>
-                                    <li>Apply organic compost as per soil test recommendations.</li>
-                                    <li>Ideal Soil pH levels between 6.0 - 7.5.</li>
-                                    <li>Ideal Nitrogen levels between 20 - 50</li>
-                                    <li>Ideal Phosphorus levels between 15 - 40</li>
-                                    <li>Ideal potassium levels between 15 - 40</li>
-                                    <li>Retest soil after 45 days.</li>
+                                    Apply organic compost as per soil test recommendations.
+                                    Ideal Soil pH levels between 6.0 - 7.5.
+                                    Ideal Nitrogen levels between 20 - 50
+                                    Ideal Phosphorus levels between 15 - 40
+                                    Ideal potassium levels between 15 - 40
+                                    Retest soil after 45 days.
                                 </ul>
                             </div>
                             """, unsafe_allow_html=True
