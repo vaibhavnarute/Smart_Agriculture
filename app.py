@@ -8,7 +8,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Now import other libraries
+# Now import other librariess
 import os
 import numpy as np
 import pandas as pd
