@@ -392,20 +392,6 @@ def main():
             st_lottie(lottie_agri, height=400, key="agri")
         
         st.markdown("---")
-        
-        # Stats Section
-        st.subheader("🚀 Get Started")
-        cols = st.columns(4)
-        with cols[0]:
-            st.metric("Farmers Served", "1.2K+", "34 New")
-        with cols[1]:
-            st.metric("Crop Accuracy", "92%", "5% Increase")
-        with cols[2]:
-            st.metric("Water Saved", "4.7M L", "12% Efficiency")
-        with cols[3]:
-            st.metric("Yield Improved", "65%", "8% MoM")
-        style_metric_cards()
-        
         st.markdown("---")
         st.markdown(
             """
