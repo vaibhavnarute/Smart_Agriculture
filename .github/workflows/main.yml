@@ -32,9 +32,11 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}  # Hugging Face token stored in GitHub Secrets
         run: |
-          # Create a new Space or update an existing one
-          python -m huggingface_hub.space.create_or_update_space \
-            --repo-id "ayugupta4704/AGROBLOOM" \  # Replace with your Hugging Face username and space name
-            --app-file "app.py" \  # Replace with the path to your Streamlit app file
-            --space-type "streamlit" \
-            --token $HF_TOKEN
+          # Use the huggingface-cli to upload files to the Space
+          huggingface-cli upload \
+            "ayugupta4704/AGROBLOOM" \  # Replace with your Hugging Face username and Space name
+            "app.py" \  # Replace with the path to your Streamlit app file
+            "app.py" \  # Destination path in the Space
+            --token $HF_TOKEN \
+            --repo-type space \
+            --space-type streamlit
