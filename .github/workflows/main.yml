@@ -27,6 +27,10 @@ jobs:
           pip install -r requirements.txt
           pip install huggingface_hub[cli]  # Install huggingface_hub with CLI support
 
+      # Debug: List files to ensure app.py exists
+      - name: Debug repository files
+        run: ls -la
+
       # Deploy to Hugging Face Spaces
       - name: Deploy to Hugging Face
         env:
@@ -35,7 +39,7 @@ jobs:
           # Use the huggingface-cli to upload files to the Space
           huggingface-cli upload \
             "ayugupta4704/AGROBLOOM" \  # Replace with your Hugging Face username and Space name
-            "app.py" \  # Replace with the path to your Streamlit app file
+            "app.py" \  # Path to the file you want to upload
             "app.py" \  # Destination path in the Space
             --token $HF_TOKEN \
             --repo-type space \
