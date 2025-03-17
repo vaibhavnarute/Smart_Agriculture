@@ -1,0 +1,24 @@
+name: Deploy to Hugging Face Spaces
+
+on:
+  push:
+    branches:
+      - main  # Change to your deployment branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Push to Hugging Face Space
+        run: |
+          git clone https://huggingface.co/spaces/vaibhav873/agri
+          cp -r * agri/
+          cd agri
+          git config user.name "vaibhavnarute"
+          git config user.email "your-email@example.com"
+          git add .
+          git commit -m "Auto-deploy from GitHub"
+          git push
