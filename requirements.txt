@@ -1,10 +1,10 @@
 wheel>=0.42.0
 setuptools>=65.5.1
-numpy>=2.2.0
+numpy>=1.21.0
 streamlit>=1.32.0
 pandas>=2.2.0
 requests==2.31.0
-opencv-python>=4.9.0
+opencv-python-headless
 Pillow>=10.2.0
 streamlit-extras>=0.3.6
 streamlit-lottie>=0.0.5
@@ -16,6 +16,7 @@ earthengine-api>=0.1.390
 geemap>=0.29.6
 folium>=0.14.0
 streamlit-folium>=0.18.0
+<<<<<<< HEAD
 
 langchain_core
 streamlit
@@ -34,3 +35,6 @@ yfinance
 gtts 
 speechrecognition 
 pydub
+=======
+huggingface_hub[cli]
+>>>>>>> 424c1028ad590c03c2683bf57cafda6536daa567
