@@ -1,2 +1,0 @@
-- name: Debug repository files
-  run: ls -la
